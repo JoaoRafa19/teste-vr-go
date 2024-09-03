@@ -1,0 +1,87 @@
+
+services:
+  db:
+    image: postgres:latest
+    container_name: db
+    ports:
+      - ${DATABASE_PORT:-5432}:5432
+    volumes:
+      - ./data/service-core-db:/var/lib/postgresql/data
+
+    networks:
+      - service-core-backend
+    healthcheck:
+      test: "exit 0"
+
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME}
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+
+  service-migrate:
+    restart: on-failure
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    container_name: migrate
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_started
+    networks:
+      - service-core-backend
+    environment:
+      DATABASE_PORT: ${DATABASE_PORT}
+      DATABASE_USER: ${DATABASE_USER}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_NAME: ${DATABASE_NAME}
+      DATABASE_HOST: ${DATABASE_HOST}
+    command: >
+      migrate -m ./internal/store/pgstore/migrations --config ./internal/store/pgstore/migrations/tern.conf
+      
+  app:
+    build: .
+    ports:
+      - 3000:3000
+    container_name: app
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+      - service-migrate
+    networks:
+      - service-core-backend
+    environment:
+      DATABASE_PORT: ${DATABASE_PORT}
+      DATABASE_USER: ${DATABASE_USER}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_NAME: ${DATABASE_NAME}
+      DATABASE_HOST: ${DATABASE_HOST}
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    container_name: pgadmin
+    depends_on:
+      - db
+      - service-migrate
+    ports:
+      - 8081:80
+
+    networks:
+      - service-core-backend
+
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@admin.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-password}
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+
+networks:
+  service-core-backend:
+    driver: "bridge"
+
+volumes:
+  pgadmin:
+    driver: local
