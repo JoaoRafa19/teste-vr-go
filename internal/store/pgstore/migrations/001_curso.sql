@@ -1,6 +1,6 @@
 -- Write your migrate up statements here
 CREATE TABLE IF NOT EXISTS curso (
-    "id"        uuid            PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+    "codigo"    SERIAL       PRIMARY KEY            ,
     "descricao" VARCHAR(50)                 NOT NULL,
     "ementa"    TEXT                        NOT NULL
 );

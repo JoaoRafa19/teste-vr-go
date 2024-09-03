@@ -7,7 +7,7 @@
 # Execução 
 
 ```shell 
-docker compose up
+make up && make logs
 ```
 
 # Desenvolvimento
@@ -49,8 +49,6 @@ sqlc generate -f ./internal/store/pgstore/sqlc.yml
 ```
 
 
-## Deps
-
 
 #### Install all deps:
 ```shell
@@ -65,4 +63,70 @@ go mod tidy
 - **sqlc**
 ```shell
 go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+```
+
+
+## __Observação__
+É necessário criar o arquivo .env na raiz do projeto e na pasta service core com as variáveis de ambiente necessárias
+ex.:
+```.env
+DATABASE_PORT=5432
+DATABASE_USER="postgres"
+DATABASE_PASSWORD="123456789"
+DATABASE_NAME="plataforma-ead"
+DATABASE_HOST="service-core-db"
+```
+
+### Comandos principais
+***Rodando o container***
+```shell
+make up
+```
+___(ou com logs)___
+```shell
+MODE=l make up
+```
+```shell
+make up && make logs
+```
+
+***Logs***
+>Com o container já de pé ele vai acoplar o terminal ao terminal de logs do docker.
+
+```shell
+make logs
+```
+
+Restart
+> Reinicia o container
+```shell
+make restart
+```
+
+Parar
+>Encerra a execução da aplicação
+```shell
+make down
+```
+
+
+## Dev dependencies
+
+AIR (live reload do go)
+```
+go install github.com/air-verse/air@latest 
+```
+### Comandos do projeto
+Compilar os arquivo do sqlc
+```shell
+go gen ./...
+```
+
+
+## Testes
+
+### Service Core
+Executar testes service core
+```shell
+make test-service-core
 ```

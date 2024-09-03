@@ -4,8 +4,10 @@ WORKDIR /app
 
 COPY go.mod go.sum ./
 
-COPY . .
 
+RUN go install github.com/air-verse/air@latest
+
+COPY . .
 EXPOSE 3000
 
-CMD go run 
+CMD ["air"]

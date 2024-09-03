@@ -4,14 +4,13 @@ WORKDIR /app
 
 # Copie os arquivos necessários
 COPY go.mod go.sum ./
-RUN go mod download
 
 COPY . .
 
 # Instale o tern
 RUN go install github.com/jackc/tern/v2@latest
 
-RUN sleep 10
+RUN sleep 2
 
 # Comando de entrada padrão para o contêiner
 ENTRYPOINT ["tern"]

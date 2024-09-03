@@ -25,3 +25,8 @@ up:
 .PHONY: psql
 psql:
 	docker exec -it db psql -U postgres teste
+
+
+.PHONY: logs
+logs:
+	docker logs -f app

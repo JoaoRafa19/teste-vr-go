@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	
+
+	"github.com/JoaoRafa19/teste-vr-go/internal/api"
+	"github.com/JoaoRafa19/teste-vr-go/internal/store/pgstore"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
@@ -24,11 +26,11 @@ func main() {
 
 	pool, err := pgxpool.New(ctx, fmt.Sprintf(
 		"user=%s password=%s host=%s port=%s dbname=%s",
-		os.Getenv("WSRS_DATABASE_USER"),
-		os.Getenv("WSRS_DATABASE_PASSWORD"),
-		os.Getenv("WSRS_DATABASE_HOST"),
-		os.Getenv("WSRS_DATABASE_PORT"),
-		os.Getenv("WSRS_DATABASE_NAME"),
+		os.Getenv("DATABASE_USER"),
+		os.Getenv("DATABASE_PASSWORD"),
+		os.Getenv("DATABASE_HOST"),
+		os.Getenv("DATABASE_PORT"),
+		os.Getenv("DATABASE_NAME"),
 	))
 
 	if err != nil {
