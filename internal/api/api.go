@@ -49,6 +49,7 @@ func NewHandler(q *pgstore.Queries) apiHandler {
 		r.Post("/", h.handleCreateAluno)
 		r.Patch("/{codigo}", h.handleUpdateStudent)
 		r.Post("/{codigo}/matricula", h.handleMatricula)
+		r.Delete("/{codigo}", h.handleDeleteAluno)
 	})
 	r.Route("/curso", func(r chi.Router) {
 		r.Post("/", h.handleCreateCurso)
@@ -59,6 +60,48 @@ func NewHandler(q *pgstore.Queries) apiHandler {
 
 	h.r = r
 	return h
+}
+
+func (h *apiHandler) handleDeleteAluno(w http.ResponseWriter, r *http.Request) {
+    codigo := chi.URLParam(r, "codigo")
+    var codigoInt int32
+    if _, err := fmt.Sscanf(codigo, "%d", &codigoInt); err != nil {
+        returnError(w, http.StatusBadRequest)
+        return
+    }
+
+    err := h.q.DeleteAluno(r.Context(), codigoInt)
+    if err != nil {
+        if errors.Is(err, pgx.ErrNoRows) {
+            returnError(w, 404)
+            return
+        }
+        returnError(w, 500)
+        return
+    }
+
+    w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *apiHandler) handleDeleteCurso(w http.ResponseWriter, r *http.Request) {
+    codigo := chi.URLParam(r, "codigo")
+    var codigoInt int32
+    if _, err := fmt.Sscanf(codigo, "%d", &codigoInt); err != nil {
+        returnError(w, http.StatusBadRequest)
+        return
+    }
+
+    err := h.q.DeleteCurso(r.Context(), codigoInt)
+    if err != nil {
+        if errors.Is(err, pgx.ErrNoRows) {
+            returnError(w, 404)
+            return
+        }
+        returnError(w, 500)
+        return
+    }
+
+    w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *apiHandler) handleMatricula(w http.ResponseWriter, r *http.Request) {
@@ -420,23 +463,25 @@ func (h *apiHandler) echo(w http.ResponseWriter, r *http.Request) {
 }
 
 func returnData(w http.ResponseWriter, res any) {
-	if err := json.NewEncoder(w).Encode(res); err != nil {
-		returnError(w, 500)
-		return
-	}
+    w.Header().Set("Content-Type", "application/json")
+    if err := json.NewEncoder(w).Encode(res); err != nil {
+        returnError(w, 500)
+        return
+    }
 }
+
 func returnError(w http.ResponseWriter, status int) {
+    w.Header().Set("Content-Type", "application/json")
+    type _Message struct {
+        Error string `json:"error"`
+    }
+    var errorMessage _Message
+    w.WriteHeader(status)
 
-	type _Message struct {
-		Error string `json:"error"`
-	}
-	var errorMessage _Message
-	w.WriteHeader(status)
+    errorMessage = _Message{
+        Error: http.StatusText(status),
+    }
 
-	errorMessage = _Message{
-		Error: http.StatusText(status),
-	}
-
-	data, _ := json.Marshal(errorMessage)
-	w.Write(data)
+    data, _ := json.Marshal(errorMessage)
+    w.Write(data)
 }

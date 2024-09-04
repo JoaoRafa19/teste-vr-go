@@ -92,6 +92,30 @@ func (q *Queries) CursosMatriculados(ctx context.Context, codigoAluno int32) ([]
 	return items, nil
 }
 
+const deleteAluno = `-- name: DeleteAluno :exec
+DELETE FROM 
+    aluno 
+WHERE 
+    codigo = $1
+`
+
+func (q *Queries) DeleteAluno(ctx context.Context, codigo int32) error {
+	_, err := q.db.Exec(ctx, deleteAluno, codigo)
+	return err
+}
+
+const deleteCurso = `-- name: DeleteCurso :exec
+DELETE FROM 
+    curso 
+WHERE 
+    codigo=$1
+`
+
+func (q *Queries) DeleteCurso(ctx context.Context, codigo int32) error {
+	_, err := q.db.Exec(ctx, deleteCurso, codigo)
+	return err
+}
+
 const getAllAlunos = `-- name: GetAllAlunos :many
 select codigo, nome from aluno
 `

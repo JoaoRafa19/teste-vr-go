@@ -7,6 +7,17 @@ SELECT * FROM
 WHERE 
     a.codigo = $1;
     
+-- name: DeleteAluno :exec
+DELETE FROM 
+    aluno 
+WHERE 
+    codigo = $1;
+
+-- name: DeleteCurso :exec
+DELETE FROM 
+    curso 
+WHERE 
+    codigo=$1;
 
 
 -- name: CreateAluno :one 
