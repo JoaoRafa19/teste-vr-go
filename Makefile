@@ -5,9 +5,9 @@ test-:
 restart:
 	docker compose restart
 
-.PHONY: log
-log:
-	docker logs -f app
+.PHONY: run
+run:
+	docker compose up -d && docker logs -f app
 
 .PHONY: down
 
