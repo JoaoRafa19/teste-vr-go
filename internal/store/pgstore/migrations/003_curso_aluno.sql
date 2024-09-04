@@ -2,10 +2,10 @@
 CREATE TABLE IF NOT EXISTS curso_aluno (
     "codigo" SERIAL PRIMARY KEY,
     "codigo_aluno" INTEGER NOT NULL,
-    "codigo_curso" uuid NOT NULL,
+    "codigo_curso" INTEGER NOT NULL,
 
-    FOREIGN KEY (codigo_aluno) REFERENCES aluno(codigo),
-    FOREIGN KEY (codigo_curso) REFERENCES curso(id)
+    FOREIGN KEY (codigo_aluno) REFERENCES aluno(codigo) ON DELETE CASCADE ,
+    FOREIGN KEY (codigo_curso) REFERENCES curso(codigo) ON DELETE CASCADE
 );
 ---- create above / drop below ----
 DROP TABLE IF EXISTS curso_aluno;

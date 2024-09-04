@@ -4,18 +4,13 @@
 
 package pgstore
 
-import (
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
-)
-
 type Aluno struct {
 	Codigo int32
-	Nome   pgtype.Text
+	Nome   string
 }
 
 type Curso struct {
-	ID        uuid.UUID
+	Codigo    int32
 	Descricao string
 	Ementa    string
 }
@@ -23,5 +18,5 @@ type Curso struct {
 type CursoAluno struct {
 	Codigo      int32
 	CodigoAluno int32
-	CodigoCurso uuid.UUID
+	CodigoCurso int32
 }

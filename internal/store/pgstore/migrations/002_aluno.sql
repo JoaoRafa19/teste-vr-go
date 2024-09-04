@@ -1,7 +1,7 @@
 -- Write your migrate up statements here
 CREATE TABLE IF NOT EXISTS aluno (
     codigo SERIAL PRIMARY KEY,
-    nome VARCHAR(50)
+    nome VARCHAR(50) NOT NULL
 );
 
 ---- create above / drop below ----

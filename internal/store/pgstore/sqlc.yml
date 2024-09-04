@@ -13,3 +13,9 @@ sql:
             go_type: 
               import: "github.com/google/uuid"
               type: "UUID"
+          - db_type: "TEXT"
+            go_type:
+              type: "string"
+          - db_type: "varchar"
+            go_type:
+              type: "string"

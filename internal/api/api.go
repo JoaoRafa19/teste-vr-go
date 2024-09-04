@@ -2,6 +2,8 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -9,6 +11,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
+	"github.com/jackc/pgx/v5"
 )
 
 type apiHandler struct {
@@ -44,13 +47,373 @@ func NewHandler(q *pgstore.Queries) apiHandler {
 
 	r.Route("/aluno", func(r chi.Router) {
 		r.Get("/", h.handleGetAllStudents)
+		r.Get("/{codigo}", h.handleGetStudent)
+		r.Post("/", h.handleCreateAluno)
+		r.Patch("/{codigo}", h.handleUpdateStudent)
+		r.Post("/{codigo}/matricula", h.handleMatricula)
+	})
+	r.Route("/curso", func(r chi.Router) {
+		r.Post("/", h.handleCreateCurso)
+		r.Get("/", h.handleGetAllCursos)
+		r.Get("/{codigo}", h.handleGetCurso)
+		r.Patch("/{codigo}", h.handleUpdateCurso)
 	})
 
 	h.r = r
 	return h
-
 }
 
+func (h *apiHandler) handleMatricula(w http.ResponseWriter, r *http.Request) {
+	code := chi.URLParam(r, "codigo")
+	if len(code) <= 0 {
+		returnError(w, http.StatusBadRequest)
+		return
+	}
+
+	var codigo int32
+	if _, err := fmt.Sscanf(code, "%d", &codigo); err != nil {
+		returnError(w, 500)
+		return
+	}
+
+	var body RequestMatricula
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		returnError(w, http.StatusBadRequest)
+		return
+	}
+
+	aluno, err := h.q.GetAluno(r.Context(), codigo)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			returnError(w, 404)
+			return
+		}
+		returnError(w, 500)
+		return
+	}
+
+	matriculas, err := h.q.MatriculasPorAluno(r.Context(), aluno.Codigo)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			returnError(w, 404)
+			return
+		}
+		returnError(w, 500)
+		return
+	}
+	if matriculas == 3 {
+		//Um aluno não pode estar matriculado em mais de 3 cursos;
+		w.WriteHeader(400)
+		returnData(w, ResponseMatriculaError{
+			Message: "Limite de matriculas atingido",
+		})
+		return
+	}
+
+	var res ResponseMatricula
+
+	for _, code := range body.CourseCodes {
+		// Cursos não podem ter mais de 10 alunos matriculados (turma cheia);
+		curso, err := h.q.GetCurso(r.Context(), int32(code))
+		if err != nil {
+			slog.Error("Erro ao buscar curso", "error", err)
+			continue
+		}
+		if curso.Matriculas < 10 {
+			matricula, err := h.q.MatricularAluno(r.Context(), pgstore.MatricularAlunoParams{
+				CodigoAluno: aluno.Codigo,
+				CodigoCurso: curso.Codigo,
+			})
+			if err != nil {
+				slog.Error("Erro ao matricular", "error", err)
+				continue
+			}
+			res.Enrolments = append(res.Enrolments, CodigoMatricula{
+				Codigo:    int(curso.Codigo),
+				Matricula: int(matricula),
+			})
+		}
+	}
+
+	returnData(w, res)
+}
+
+func (h *apiHandler) handleUpdateCurso(w http.ResponseWriter, r *http.Request) {
+	codigoCurso := chi.URLParam(r, "codigo")
+
+	var codigo int32
+	if _, err := fmt.Sscanf(codigoCurso, "%d", &codigo); err != nil {
+		returnError(w, http.StatusBadRequest)
+		return
+	}
+	_, err := h.q.GetCurso(r.Context(), codigo)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			returnError(w, 404)
+			return
+		}
+		returnError(w, 500)
+		return
+	}
+
+	var b RequestUpdateCurso
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(&b); err != nil {
+		http.Error(w, "Invalid Request", 400)
+		return
+	}
+
+	if len(b.Theme) == 0 || len(b.Description) == 0 {
+		http.Error(w, "Invalid Request", 400)
+		return
+	}
+
+	novoCurso, err := h.q.UpdateCurso(r.Context(), pgstore.UpdateCursoParams{
+		Codigo:    codigo,
+		Descricao: b.Description,
+		Ementa:    b.Theme,
+	})
+
+	if err != nil {
+		returnError(w, 500)
+		return
+	}
+	var data = ResponseUpdateCurso{
+		Code:        novoCurso.Codigo,
+		Theme:       novoCurso.Ementa,
+		Description: novoCurso.Descricao,
+	}
+
+	returnData(w, data)
+}
+
+func (h *apiHandler) handleUpdateStudent(w http.ResponseWriter, r *http.Request) {
+	code := chi.URLParam(r, "codigo")
+	if len(code) <= 0 {
+		returnError(w, http.StatusBadRequest)
+		return
+	}
+
+	var codigo int32
+	if _, err := fmt.Sscanf(code, "%d", &codigo); err != nil {
+		returnError(w, 500)
+		return
+	}
+
+	var body RequestUpdateAluno
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		returnError(w, http.StatusBadRequest)
+		return
+	}
+
+	_, err := h.q.GetAluno(r.Context(), codigo)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			returnError(w, 404)
+			return
+		}
+		returnError(w, 500)
+		return
+	}
+	aluno, err := h.q.UpdateNomeAluno(r.Context(), pgstore.UpdateNomeAlunoParams{
+		Codigo: codigo,
+		Nome:   body.Name,
+	})
+	if err != nil {
+		returnError(w, http.StatusInternalServerError)
+		return
+	}
+
+	returnData(w, ResponseStudent{
+		Code: int(aluno.Codigo),
+		Name: aluno.Nome,
+	})
+}
+
+func (h *apiHandler) handleGetStudent(w http.ResponseWriter, r *http.Request) {
+	code := chi.URLParam(r, "codigo")
+	if len(code) <= 0 {
+		returnError(w, http.StatusBadRequest)
+		return
+	}
+
+	var codigo int32
+	if _, err := fmt.Sscanf(code, "%d", &codigo); err != nil {
+		returnError(w, 500)
+		return
+	}
+
+	student, err := h.q.GetAluno(r.Context(), codigo)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			returnError(w, 404)
+			return
+		}
+		returnError(w, 500)
+		return
+	}
+
+	returnData(w, ResponseStudent{
+		Code: int(student.Codigo),
+		Name: student.Nome,
+	})
+}
+
+func (h *apiHandler) handleGetCurso(w http.ResponseWriter, r *http.Request) {
+	codigoCurso := chi.URLParam(r, "codigo")
+
+	var codigo int32
+	if _, err := fmt.Sscanf(codigoCurso, "%d", &codigo); err != nil {
+		returnError(w, http.StatusBadRequest)
+		return
+	}
+	curso, err := h.q.GetCurso(r.Context(), codigo)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			returnError(w, 404)
+			return
+		}
+		returnError(w, 500)
+		return
+	}
+
+	var res = ResponseCurso{
+		Code:        curso.Codigo,
+		Description: curso.Descricao,
+		Theme:       curso.Ementa,
+		Enrolments:  curso.Matriculas,
+	}
+
+	returnData(w, res)
+}
+
+func (h *apiHandler) handleGetAllCursos(w http.ResponseWriter, r *http.Request) {
+	cursos, err := h.q.GetCursos(r.Context())
+
+	if err != nil {
+		returnError(w, 500)
+		return
+	}
+
+	var response []ResponseCurso
+
+	for _, c := range cursos {
+		response = append(response, ResponseCurso{
+			Code:        c.Codigo,
+			Description: c.Descricao,
+			Theme:       c.Ementa,
+			Enrolments:  c.Matriculas,
+		})
+	}
+
+	returnData(w, response)
+}
+
+func (h *apiHandler) handleGetAllStudents(w http.ResponseWriter, r *http.Request) {
+	students, err := h.q.GetAllAlunos(r.Context())
+
+	if err != nil {
+		returnError(w, 500)
+		return
+	}
+
+	w.WriteHeader(200)
+
+	var data []ResponseStudent
+	for _, student := range students {
+		data = append(data, ResponseStudent{
+			Code: int(student.Codigo),
+			Name: student.Nome,
+		})
+	}
+
+	returnData(w, data)
+}
+
+func (h *apiHandler) handleCreateAluno(w http.ResponseWriter, r *http.Request) {
+
+	defer r.Body.Close()
+
+	var b RequestCreateAluno
+	if err := json.NewDecoder(r.Body).Decode(&b); err != nil {
+		http.Error(w, "Invalid body", 400)
+		return
+	}
+	if len(b.Name) == 0 {
+		http.Error(w, "Invalid body", 400)
+		return
+	}
+
+	codigo, err := h.q.CreateAluno(r.Context(), b.Name)
+
+	if err != nil {
+		http.Error(w, "Invalid body", 400)
+		return
+	}
+
+	returnData(w, ResponseCreateAluno{
+		Code: codigo,
+	})
+}
+
+func (h *apiHandler) handleCreateCurso(w http.ResponseWriter, r *http.Request) {
+
+	var b RequestCreateCurso
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(&b); err != nil {
+		http.Error(w, "Invalid Request", 400)
+		return
+	}
+	if len(b.Theme) == 0 || len(b.Description) == 0 {
+		http.Error(w, "Invalid Request", 400)
+		return
+	}
+	var curso pgstore.Curso
+	curso, err := h.q.CreateCurso(r.Context(), pgstore.CreateCursoParams{
+		Descricao: b.Description,
+		Ementa:    b.Theme,
+	})
+	if err != nil {
+		http.Error(w, "Internal Error", 500)
+		return
+	}
+
+	var response = ResponseCreateCurso{
+		Code:        curso.Codigo,
+		Description: curso.Descricao,
+		Theme:       curso.Ementa,
+	}
+	returnData(w, response)
+}
+
+func (h *apiHandler) echo(w http.ResponseWriter, r *http.Request) {
+	type requestBody struct {
+		Message string `json:"message"`
+	}
+	defer r.Body.Close()
+
+	var b requestBody
+
+	if err := json.NewDecoder(r.Body).Decode(&b); err != nil {
+		slog.Error("Unmarshal", "error", err)
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(200)
+	w.Write([]byte(b.Message))
+}
+
+func returnData(w http.ResponseWriter, res any) {
+	if err := json.NewEncoder(w).Encode(res); err != nil {
+		returnError(w, 500)
+		return
+	}
+}
 func returnError(w http.ResponseWriter, status int) {
 
 	type _Message struct {
@@ -65,58 +428,4 @@ func returnError(w http.ResponseWriter, status int) {
 
 	data, _ := json.Marshal(errorMessage)
 	w.Write(data)
-}
-
-// func returnData(result []byte, w http.ResponseWriter) {
-// 	w.Header().Set("Content-Type", "application/json")
-// 	if _, err := w.Write(result); err != nil {
-// 		slog.Error("failed to return response room", "error", err)
-// 	}
-// }
-
-func (h *apiHandler) handleGetAllStudents(w http.ResponseWriter, r *http.Request) {
-	students, err := h.q.GetAllStudents(r.Context())
-
-	if err != nil {
-		w.WriteHeader(500)
-	}
-
-	w.WriteHeader(200)
-	type resType struct {
-		Codigo int    `json:"codigo"`
-		Nome   string `json:"nome"`
-	}
-	var data []resType
-	for _, student := range students {
-		data = append(data, resType{
-			Codigo: int(student.Codigo),
-			Nome:   student.Nome.String,
-		})
-	}
-
-	//var marshaledData []byte
-	err = json.NewEncoder(w).Encode(data)
-	if err != nil {
-		w.WriteHeader(500)
-	}
-
-	//returnData(students)
-
-}
-
-func (h *apiHandler) echo(w http.ResponseWriter, r *http.Request) {
-	type body struct {
-		Message string `json:"message"`
-	}
-
-	var b body
-
-	if err := json.NewDecoder(r.Body).Decode(&b); err != nil {
-		slog.Error("Unmarshal", "error", err)
-		http.Error(w, "invalid json", http.StatusBadRequest)
-		return
-	}
-
-	w.WriteHeader(200)
-	w.Write([]byte(b.Message))
 }
