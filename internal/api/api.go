@@ -41,10 +41,7 @@ func NewHandler(q *pgstore.Queries) apiHandler {
 		MaxAge:           300,
 	}))
 
-	//#DEFINE routes
 	r.Post("/echo", h.echo)
-	// #
-
 	r.Route("/aluno", func(r chi.Router) {
 		r.Get("/", h.handleGetAllStudents)
 		r.Get("/{codigo}", h.handleGetStudent)
