@@ -56,6 +56,7 @@ func NewHandler(q *pgstore.Queries) apiHandler {
 		r.Get("/", h.handleGetAllCursos)
 		r.Get("/{codigo}", h.handleGetCurso)
 		r.Patch("/{codigo}", h.handleUpdateCurso)
+		r.Delete("/{codigo}", h.handleDeleteCurso)
 	})
 
 	h.r = r
