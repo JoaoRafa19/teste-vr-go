@@ -32,29 +32,7 @@ insert into curso
 values 
     ($1, $2) RETURNING *;
 
--- name: GetCursos :many
-SELECT 
-    c.*, 
-    CAST(COALESCE(COUNT(ca.codigo_aluno), 0) AS INTEGER) AS matriculas
-FROM 
-    curso c
-LEFT JOIN 
-    curso_aluno ca ON c.codigo = ca.codigo_curso
-GROUP BY 
-    c.codigo;
 
--- name: GetCurso :one
-SELECT 
-    c.*,
-    CAST(COALESCE(COUNT(ca.codigo_aluno), 0) AS INTEGER) AS matriculas 
-FROM
-    curso c
-LEFT JOIN 
-    curso_aluno ca ON c.codigo = ca.codigo_curso
-WHERE 
-    c.codigo = $1
-GROUP BY 
-    c.codigo;
 
 -- name: UpdateCurso :one 
 update curso 
@@ -89,3 +67,41 @@ FROM
     curso_aluno ca
 WHERE 
     ca.codigo_aluno = $1;
+
+
+-- name: CursosMatriculados :many
+SELECT 
+    c.codigo
+FROM 
+    curso c 
+LEFT JOIN 
+    curso_aluno ca ON c.codigo = ca.codigo_curso
+WHERE 
+    ca.codigo_aluno = $1
+GROUP BY 
+    c.codigo;
+    
+
+-- name: GetCursos :many
+SELECT 
+    c.*, 
+    CAST(COALESCE(COUNT(ca.codigo_aluno), 0) AS INTEGER) AS matriculas
+FROM 
+    curso c
+LEFT JOIN 
+    curso_aluno ca ON c.codigo = ca.codigo_curso
+GROUP BY 
+    c.codigo;
+
+-- name: GetCurso :one
+SELECT 
+    c.*,
+    CAST(COALESCE(COUNT(ca.codigo_aluno), 0) AS INTEGER) AS matriculas 
+FROM
+    curso c
+LEFT JOIN 
+    curso_aluno ca ON c.codigo = ca.codigo_curso
+WHERE 
+    c.codigo = $1
+GROUP BY 
+    c.codigo;

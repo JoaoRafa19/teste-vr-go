@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/JoaoRafa19/teste-vr-go/internal/store/pgstore"
+	"github.com/JoaoRafa19/teste-vr-go/internal/utils"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
@@ -108,10 +109,23 @@ func (h *apiHandler) handleMatricula(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	cursosMatriculado, err := h.q.CursosMatriculados(r.Context(), aluno.Codigo)
+	if err != nil {
+		slog.Error("Erro ao buscar os cursos do aluno", "error", err)
+		return
+	}
+
+
+
+
 	var res ResponseMatricula
 
 	for _, code := range body.CourseCodes {
 		// Cursos não podem ter mais de 10 alunos matriculados (turma cheia);
+		if utils.Contains(cursosMatriculado, int32(code)){
+			continue
+		}
+		
 		curso, err := h.q.GetCurso(r.Context(), int32(code))
 		if err != nil {
 			slog.Error("Erro ao buscar curso", "error", err)

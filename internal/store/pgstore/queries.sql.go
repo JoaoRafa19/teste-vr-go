@@ -59,6 +59,39 @@ func (q *Queries) CreateCurso(ctx context.Context, arg CreateCursoParams) (Curso
 	return i, err
 }
 
+const cursosMatriculados = `-- name: CursosMatriculados :many
+SELECT 
+    c.codigo
+FROM 
+    curso c 
+LEFT JOIN 
+    curso_aluno ca ON c.codigo = ca.codigo_curso
+WHERE 
+    ca.codigo_aluno = $1
+GROUP BY 
+    c.codigo
+`
+
+func (q *Queries) CursosMatriculados(ctx context.Context, codigoAluno int32) ([]int32, error) {
+	rows, err := q.db.Query(ctx, cursosMatriculados, codigoAluno)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int32
+	for rows.Next() {
+		var codigo int32
+		if err := rows.Scan(&codigo); err != nil {
+			return nil, err
+		}
+		items = append(items, codigo)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getAllAlunos = `-- name: GetAllAlunos :many
 select codigo, nome from aluno
 `

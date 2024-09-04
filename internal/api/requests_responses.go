@@ -23,7 +23,7 @@ type RequestMatricula struct {
 
 // Responses
 type CodigoMatricula struct {
-	Codigo int `json:"codigo_curso"`
+	Codigo    int `json:"codigo_curso"`
 	Matricula int `json:"matricula"`
 }
 type ResponseMatricula struct {
