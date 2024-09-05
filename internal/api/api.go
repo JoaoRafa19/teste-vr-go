@@ -498,7 +498,6 @@ func (h *apiHandler) handleSearchAlunos(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Chama a query de busca no banco de dados
 	alunos, err := h.q.SearchAlunos(r.Context(), termosBusca)
 	if err != nil {
 		slog.Error("Erro ao buscar alunos", "error", err)
@@ -506,7 +505,6 @@ func (h *apiHandler) handleSearchAlunos(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Prepara os dados para retorno
 	var data []ResponseStudent
 	for _, aluno := range alunos {
 		data = append(data, ResponseStudent{
@@ -514,6 +512,5 @@ func (h *apiHandler) handleSearchAlunos(w http.ResponseWriter, r *http.Request) 
 		})
 	}
 
-	// Retorna os dados em formato JSON
 	returnData(w, data)
 }
