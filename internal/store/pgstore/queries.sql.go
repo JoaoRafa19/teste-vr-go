@@ -268,6 +268,36 @@ func (q *Queries) MatriculasPorAluno(ctx context.Context, codigoAluno int32) (in
 	return numero_cursos, err
 }
 
+const searchAlunos = `-- name: SearchAlunos :many
+SELECT 
+    nome 
+FROM 
+    aluno 
+WHERE 
+    unaccent(nome) ILIKE '%' || unaccent($1) || '%'
+    OR to_tsvector('simple', unaccent(nome)) @@ to_tsquery('simple', unaccent($1))
+`
+
+func (q *Queries) SearchAlunos(ctx context.Context, unaccent interface{}) ([]string, error) {
+	rows, err := q.db.Query(ctx, searchAlunos, unaccent)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var nome string
+		if err := rows.Scan(&nome); err != nil {
+			return nil, err
+		}
+		items = append(items, nome)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateCurso = `-- name: UpdateCurso :one
 update curso 
 set 

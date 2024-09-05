@@ -116,3 +116,12 @@ WHERE
     c.codigo = $1
 GROUP BY 
     c.codigo;
+
+-- name: SearchAlunos :many
+SELECT 
+    nome 
+FROM 
+    aluno 
+WHERE 
+    unaccent(nome) ILIKE '%' || unaccent($1) || '%'
+    OR to_tsvector('simple', unaccent(nome)) @@ to_tsquery('simple', unaccent($1));

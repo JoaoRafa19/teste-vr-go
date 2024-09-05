@@ -50,6 +50,7 @@ func NewHandler(q *pgstore.Queries) apiHandler {
 		r.Patch("/{codigo}", h.handleUpdateStudent)
 		r.Post("/{codigo}/matricula", h.handleMatricula)
 		r.Delete("/{codigo}", h.handleDeleteAluno)
+		r.Get("/search", h.handleSearchAlunos)
 	})
 	r.Route("/curso", func(r chi.Router) {
 		r.Post("/", h.handleCreateCurso)
@@ -485,4 +486,34 @@ func returnError(w http.ResponseWriter, status int) {
 
     data, _ := json.Marshal(errorMessage)
     w.Write(data)
+}
+
+
+func (h *apiHandler) handleSearchAlunos(w http.ResponseWriter, r *http.Request) {
+	queryParams := r.URL.Query()
+	termosBusca := queryParams.Get("q")
+
+	if termosBusca == "" {
+		http.Error(w, "Missing search terms", http.StatusBadRequest)
+		return
+	}
+
+	// Chama a query de busca no banco de dados
+	alunos, err := h.q.SearchAlunos(r.Context(), termosBusca)
+	if err != nil {
+		slog.Error("Erro ao buscar alunos", "error", err)
+		returnError(w, http.StatusInternalServerError)
+		return
+	}
+
+	// Prepara os dados para retorno
+	var data []ResponseStudent
+	for _, aluno := range alunos {
+		data = append(data, ResponseStudent{
+			Name: aluno,
+		})
+	}
+
+	// Retorna os dados em formato JSON
+	returnData(w, data)
 }
