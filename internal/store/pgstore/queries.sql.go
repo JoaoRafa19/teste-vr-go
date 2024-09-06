@@ -252,7 +252,7 @@ matriculas_por_curso AS (
     GROUP BY c.descricao
 ),
 alunos_com_matricula AS (
-    SELECT 
+    SELECT DISTINCT
         a.nome, 
         a.codigo 
     FROM 
@@ -261,7 +261,7 @@ alunos_com_matricula AS (
         curso_aluno ca ON a.codigo = ca.codigo_aluno
 ),
 alunos_sem_matricula AS (
-    SELECT 
+    SELECT DISTINCT
         a.nome, 
         a.codigo 
     FROM 
