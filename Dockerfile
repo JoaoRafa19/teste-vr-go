@@ -13,7 +13,7 @@ COPY . .
 
 RUN go install github.com/jackc/tern/v2@latest  
 
-RUN tern migrate -m ./internal/store/pgstore/migrations --config ./internal/store/pgstore/migrations/tern.conf
+RUN go run ./cmd/tools/terndotenv/main.go
 
 EXPOSE 3000
 

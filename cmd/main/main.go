@@ -25,11 +25,10 @@ func main() {
 	ctx := context.Background()
 
 	pool, err := pgxpool.New(ctx, fmt.Sprintf(
-		"user=%s password=%s host=%s port=%s dbname=%s",
+		"postgres://%s:%s@%s/koyebdb",
 		os.Getenv("DATABASE_USER"),
 		os.Getenv("DATABASE_PASSWORD"),
 		os.Getenv("DATABASE_HOST"),
-		os.Getenv("DATABASE_PORT"),
 		os.Getenv("DATABASE_NAME"),
 	))
 
