@@ -70,6 +70,7 @@ type Aluno struct {
 	Nome   string `json:"nome"`
 	Codigo int64  `json:"codigo"`
 }
+
 type ResponseDashBoardInfoRow struct {
 	TotalAlunos        int64               `json:"total_alunos"`
 	TotalCursos        int64               `json:"total_cursos"`

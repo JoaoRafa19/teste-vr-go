@@ -233,18 +233,18 @@ func (q *Queries) GetCursos(ctx context.Context) ([]GetCursosRow, error) {
 
 const getDashBoardInfo = `-- name: GetDashBoardInfo :one
 WITH total_alunos AS (
-    SELECT COUNT(*) AS total FROM aluno
+    SELECT COALESCE(COUNT(*), 0) AS total FROM aluno
 ),
 total_cursos AS (
-    SELECT COUNT(*) AS total FROM curso
+    SELECT COALESCE(COUNT(*), 0) AS total FROM curso
 ),
 total_matriculas AS (
-    SELECT COUNT(*) AS total FROM curso_aluno
+    SELECT COALESCE(COUNT(*), 0) AS total FROM curso_aluno
 ),
 matriculas_por_curso AS (
     SELECT 
         c.descricao AS curso, 
-        COUNT(ca.codigo_aluno) AS total_matriculas
+        COALESCE(COUNT(ca.codigo_aluno), 0) AS total_matriculas
     FROM 
         curso c
     LEFT JOIN 
@@ -275,18 +275,18 @@ SELECT
     (SELECT total FROM total_alunos) AS total_alunos,
     (SELECT total FROM total_cursos) AS total_cursos,
     (SELECT total FROM total_matriculas) AS total_matriculas,
-    (SELECT json_agg(matriculas_por_curso) FROM matriculas_por_curso) AS matriculas_por_curso,
-    (SELECT json_agg(alunos_com_matricula) FROM alunos_com_matricula) AS alunos_com_matricula,
-    (SELECT json_agg(alunos_sem_matricula) FROM alunos_sem_matricula) AS alunos_sem_matricula
+    COALESCE((SELECT json_agg(matriculas_por_curso) FROM matriculas_por_curso), '[]'::json) AS matriculas_por_curso,
+    COALESCE((SELECT json_agg(alunos_com_matricula) FROM alunos_com_matricula), '[]'::json) AS alunos_com_matricula,
+    COALESCE((SELECT json_agg(alunos_sem_matricula) FROM alunos_sem_matricula), '[]'::json) AS alunos_sem_matricula
 `
 
 type GetDashBoardInfoRow struct {
-	TotalAlunos        int64
-	TotalCursos        int64
-	TotalMatriculas    int64
-	MatriculasPorCurso []byte
-	AlunosComMatricula []byte
-	AlunosSemMatricula []byte
+	TotalAlunos        interface{}
+	TotalCursos        interface{}
+	TotalMatriculas    interface{}
+	MatriculasPorCurso interface{}
+	AlunosComMatricula interface{}
+	AlunosSemMatricula interface{}
 }
 
 func (q *Queries) GetDashBoardInfo(ctx context.Context) (GetDashBoardInfoRow, error) {
