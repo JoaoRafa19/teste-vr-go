@@ -50,7 +50,7 @@ func main() {
 			"PID",
 			os.Getpid(),
 		)
-		if err := http.ListenAndServe(":3000", handler); err != nil {
+		if err := http.ListenAndServe("0.0.0.0:3000", handler); err != nil {
 			if !errors.Is(err, http.ErrServerClosed) {
 				panic(err)
 			}

@@ -60,3 +60,21 @@ type ResponseCreateCurso struct {
 	Description string `json:"descricao"`
 	Theme       string `json:"ementa"`
 }
+
+type MatriculaPorCurso struct {
+	Curso           string `json:"curso"`
+	TotalMatriculas int64  `json:"total_matriculas"`
+}
+
+type Aluno struct {
+	Nome   string `json:"nome"`
+	Codigo int64  `json:"codigo"`
+}
+type ResponseDashBoardInfoRow struct {
+	TotalAlunos        int64               `json:"total_alunos"`
+	TotalCursos        int64               `json:"total_cursos"`
+	TotalMatriculas    int64               `json:"total_matriculas"`
+	MatriculasPorCurso []MatriculaPorCurso `json:"matriculas_por_curso"`
+	AlunosComMatricula []Aluno             `json:"alunos_com_matricula"`
+	AlunosSemMatricula []Aluno             `json:"alunos_sem_matricula"`
+}

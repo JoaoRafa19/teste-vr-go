@@ -43,6 +43,7 @@ func NewHandler(q *pgstore.Queries) apiHandler {
 	}))
 
 	r.Post("/echo", h.echo)
+	r.Get("/dashboard", h.handleGetDashboardInfo)
 	r.Route("/aluno", func(r chi.Router) {
 		r.Get("/", h.handleGetAllStudents)
 		r.Get("/{codigo}", h.handleGetStudent)
@@ -64,46 +65,88 @@ func NewHandler(q *pgstore.Queries) apiHandler {
 	return h
 }
 
+func (h *apiHandler) handleGetDashboardInfo(w http.ResponseWriter, r *http.Request) {
+	dashboardInfo, err := h.q.GetDashBoardInfo(r.Context())
+	if err != nil {
+		fmt.Printf("Failed to get dashboard info: %v", err)
+		returnError(w, 500)
+		return
+	}
+
+	var matriculasPorCurso []MatriculaPorCurso
+	if err := json.Unmarshal(dashboardInfo.MatriculasPorCurso, &matriculasPorCurso); err != nil {
+		fmt.Printf("Failed to unmarshal matriculas_por_curso: %v", err)
+		returnError(w, 500)
+		return
+	}
+
+	var alunosComMatricula []Aluno
+	if err := json.Unmarshal(dashboardInfo.AlunosComMatricula, &alunosComMatricula); err != nil {
+		fmt.Printf("Failed to unmarshal alunos_com_matricula: %v", err)
+		returnError(w, 500)
+		return
+	}
+
+	var alunosSemMatricula []Aluno
+	if err := json.Unmarshal(dashboardInfo.AlunosSemMatricula, &alunosSemMatricula); err != nil {
+		fmt.Printf("Failed to unmarshal alunos_sem_matricula: %v", err)
+		returnError(w, 500)
+		return
+	}
+
+	res := ResponseDashBoardInfoRow{
+		TotalAlunos:        dashboardInfo.TotalAlunos,
+		TotalCursos:        dashboardInfo.TotalCursos,
+		TotalMatriculas:    dashboardInfo.TotalMatriculas,
+		MatriculasPorCurso: matriculasPorCurso,
+		AlunosComMatricula: alunosComMatricula,
+		AlunosSemMatricula: alunosSemMatricula,
+	}
+	fmt.Println(res)
+	returnData(w, res)
+
+}
+
 func (h *apiHandler) handleDeleteAluno(w http.ResponseWriter, r *http.Request) {
-    codigo := chi.URLParam(r, "codigo")
-    var codigoInt int32
-    if _, err := fmt.Sscanf(codigo, "%d", &codigoInt); err != nil {
-        returnError(w, http.StatusBadRequest)
-        return
-    }
+	codigo := chi.URLParam(r, "codigo")
+	var codigoInt int32
+	if _, err := fmt.Sscanf(codigo, "%d", &codigoInt); err != nil {
+		returnError(w, http.StatusBadRequest)
+		return
+	}
 
-    err := h.q.DeleteAluno(r.Context(), codigoInt)
-    if err != nil {
-        if errors.Is(err, pgx.ErrNoRows) {
-            returnError(w, 404)
-            return
-        }
-        returnError(w, 500)
-        return
-    }
+	err := h.q.DeleteAluno(r.Context(), codigoInt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			returnError(w, 404)
+			return
+		}
+		returnError(w, 500)
+		return
+	}
 
-    w.WriteHeader(http.StatusNoContent)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *apiHandler) handleDeleteCurso(w http.ResponseWriter, r *http.Request) {
-    codigo := chi.URLParam(r, "codigo")
-    var codigoInt int32
-    if _, err := fmt.Sscanf(codigo, "%d", &codigoInt); err != nil {
-        returnError(w, http.StatusBadRequest)
-        return
-    }
+	codigo := chi.URLParam(r, "codigo")
+	var codigoInt int32
+	if _, err := fmt.Sscanf(codigo, "%d", &codigoInt); err != nil {
+		returnError(w, http.StatusBadRequest)
+		return
+	}
 
-    err := h.q.DeleteCurso(r.Context(), codigoInt)
-    if err != nil {
-        if errors.Is(err, pgx.ErrNoRows) {
-            returnError(w, 404)
-            return
-        }
-        returnError(w, 500)
-        return
-    }
+	err := h.q.DeleteCurso(r.Context(), codigoInt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			returnError(w, 404)
+			return
+		}
+		returnError(w, 500)
+		return
+	}
 
-    w.WriteHeader(http.StatusNoContent)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *apiHandler) handleMatricula(w http.ResponseWriter, r *http.Request) {
@@ -160,17 +203,14 @@ func (h *apiHandler) handleMatricula(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
-
-
 	var res ResponseMatricula
 
 	for _, code := range body.CourseCodes {
 		// Cursos não podem ter mais de 10 alunos matriculados (turma cheia);
-		if utils.Contains(cursosMatriculado, int32(code)){
+		if utils.Contains(cursosMatriculado, int32(code)) {
 			continue
 		}
-		
+
 		curso, err := h.q.GetCurso(r.Context(), int32(code))
 		if err != nil {
 			slog.Error("Erro ao buscar curso", "error", err)
@@ -465,29 +505,28 @@ func (h *apiHandler) echo(w http.ResponseWriter, r *http.Request) {
 }
 
 func returnData(w http.ResponseWriter, res any) {
-    w.Header().Set("Content-Type", "application/json")
-    if err := json.NewEncoder(w).Encode(res); err != nil {
-        returnError(w, 500)
-        return
-    }
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(res); err != nil {
+		returnError(w, 500)
+		return
+	}
 }
 
 func returnError(w http.ResponseWriter, status int) {
-    w.Header().Set("Content-Type", "application/json")
-    type _Message struct {
-        Error string `json:"error"`
-    }
-    var errorMessage _Message
-    w.WriteHeader(status)
+	w.Header().Set("Content-Type", "application/json")
+	type _Message struct {
+		Error string `json:"error"`
+	}
+	var errorMessage _Message
+	w.WriteHeader(status)
 
-    errorMessage = _Message{
-        Error: http.StatusText(status),
-    }
+	errorMessage = _Message{
+		Error: http.StatusText(status),
+	}
 
-    data, _ := json.Marshal(errorMessage)
-    w.Write(data)
+	data, _ := json.Marshal(errorMessage)
+	w.Write(data)
 }
-
 
 func (h *apiHandler) handleSearchAlunos(w http.ResponseWriter, r *http.Request) {
 	queryParams := r.URL.Query()
