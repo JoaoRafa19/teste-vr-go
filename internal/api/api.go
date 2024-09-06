@@ -66,27 +66,7 @@ func NewHandler(q *pgstore.Queries) apiHandler {
 }
 
 func (h *apiHandler) handleGetDashboardInfo(w http.ResponseWriter, r *http.Request) {
-	// Estruturas de tipos
-	type MatriculaPorCurso struct {
-		Curso           string `json:"curso"`
-		TotalMatriculas int64  `json:"total_matriculas"`
-	}
 
-	type Aluno struct {
-		Nome   string `json:"nome"`
-		Codigo int64  `json:"codigo"`
-	}
-
-	type ResponseDashBoardInfoRow struct {
-		TotalAlunos        int64               `json:"total_alunos"`
-		TotalCursos        int64               `json:"total_cursos"`
-		TotalMatriculas    int64               `json:"total_matriculas"`
-		MatriculasPorCurso []MatriculaPorCurso `json:"matriculas_por_curso"`
-		AlunosComMatricula []Aluno             `json:"alunos_com_matricula"`
-		AlunosSemMatricula []Aluno             `json:"alunos_sem_matricula"`
-	}
-
-	// Obtém as informações do dashboard
 	dashboardInfo, err := h.q.GetDashBoardInfo(r.Context())
 	if err != nil {
 		fmt.Printf("Failed to get dashboard info: %v\n", err)
@@ -94,7 +74,6 @@ func (h *apiHandler) handleGetDashboardInfo(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Função auxiliar para converter interface{} para MatriculaPorCurso
 	convertToMatriculas := func(data interface{}) ([]MatriculaPorCurso, error) {
 		var result []MatriculaPorCurso
 		if items, ok := data.([]interface{}); ok {
@@ -114,7 +93,6 @@ func (h *apiHandler) handleGetDashboardInfo(w http.ResponseWriter, r *http.Reque
 		return result, nil
 	}
 
-	// Função auxiliar para converter interface{} para Aluno
 	convertToAlunos := func(data interface{}) ([]Aluno, error) {
 		var result []Aluno
 		if items, ok := data.([]interface{}); ok {
@@ -134,35 +112,30 @@ func (h *apiHandler) handleGetDashboardInfo(w http.ResponseWriter, r *http.Reque
 		return result, nil
 	}
 
-	// Converte MatriculasPorCurso
 	matriculasPorCurso, err := convertToMatriculas(dashboardInfo.MatriculasPorCurso)
 	if err != nil {
 		fmt.Printf("MatriculasPorCurso is empty or invalid: %v\n", err)
 	}
 
-	// Converte AlunosComMatricula
 	alunosComMatricula, err := convertToAlunos(dashboardInfo.AlunosComMatricula)
 	if err != nil {
 		fmt.Printf("AlunosComMatricula is empty or invalid: %v\n", err)
 	}
 
-	// Converte AlunosSemMatricula
 	alunosSemMatricula, err := convertToAlunos(dashboardInfo.AlunosSemMatricula)
 	if err != nil {
 		fmt.Printf("AlunosSemMatricula is empty or invalid: %v\n", err)
 	}
 
-	// Construção da resposta final
 	res := ResponseDashBoardInfoRow{
 		TotalAlunos:        dashboardInfo.TotalAlunos.(int64),
 		TotalCursos:        dashboardInfo.TotalCursos.(int64),
-		TotalMatriculas:    dashboardInfo.TotalMatriculas.(int64), // Valor correto vindo da query
+		TotalMatriculas:    dashboardInfo.TotalMatriculas.(int64),
 		MatriculasPorCurso: matriculasPorCurso,
 		AlunosComMatricula: alunosComMatricula,
 		AlunosSemMatricula: alunosSemMatricula,
 	}
 
-	// Logando a resposta e enviando ao cliente
 	fmt.Println(res)
 	returnData(w, res)
 }
