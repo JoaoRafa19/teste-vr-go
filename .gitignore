@@ -1,3 +1,7 @@
 data
 tmp
 .env
+
+# Ignorar arquivos de debug
+internal/api/__debug*
+main
