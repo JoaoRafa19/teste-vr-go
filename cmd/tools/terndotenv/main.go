@@ -10,8 +10,7 @@ import (
 
 func main() {
 	if err := godotenv.Load(); err != nil {
-		slog.Error("Erro ao carregar variaveis", "erro", err)
-		panic(err)
+		slog.Warn("Arquivo .env não encontrado, utilizando variáveis de ambiente do sistema")
 	}
 
 	cmd := exec.Command(
