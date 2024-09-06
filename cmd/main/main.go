@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,12 +15,11 @@ import (
 	"github.com/joho/godotenv"
 )
 
-
-
 func main() {
-	
+
 	if err := godotenv.Load(); err != nil {
-		panic(err)
+		slog.Warn("Arquivo .env não encontrado, utilizando variáveis de ambiente do sistema")
+
 	}
 
 	ctx := context.Background()
