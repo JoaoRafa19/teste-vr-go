@@ -46,6 +46,7 @@ func NewHandler(q *pgstore.Queries) apiHandler {
 	r.Get("/dashboard", h.handleGetDashboardInfo)
 	r.Route("/aluno", func(r chi.Router) {
 		r.Get("/", h.handleGetAllStudents)
+		r.Delete("/{aluno}/{curso}", h.handleRemoveMatricula)
 		r.Get("/{codigo}", h.handleGetStudent)
 		r.Post("/", h.handleCreateAluno)
 		r.Patch("/{codigo}", h.handleUpdateStudent)
@@ -57,6 +58,7 @@ func NewHandler(q *pgstore.Queries) apiHandler {
 	r.Route("/curso", func(r chi.Router) {
 		r.Post("/", h.handleCreateCurso)
 		r.Get("/", h.handleGetAllCursos)
+		r.Get("/{codigo}/matricula", h.handleGetMatriculas)
 		r.Get("/{codigo}", h.handleGetCurso)
 		r.Patch("/{codigo}", h.handleUpdateCurso)
 		r.Delete("/{codigo}", h.handleDeleteCurso)
@@ -64,6 +66,46 @@ func NewHandler(q *pgstore.Queries) apiHandler {
 
 	h.r = r
 	return h
+}
+
+func (h *apiHandler) handleGetMatriculas(w http.ResponseWriter, r *http.Request) {
+	codigo := chi.URLParam(r, "codigo")
+	var codigoInt int32
+	if _, err := fmt.Sscanf(codigo, "%d", &codigoInt); err != nil {
+		returnError(w, http.StatusBadRequest)
+		return
+	}
+
+	curso, err := h.q.GetCurso(r.Context(), codigoInt)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			returnError(w, 404)
+			return
+		}
+		returnError(w, 500)
+		return
+	}
+
+	matriculas, err := h.q.MatriculaPorCurso(r.Context(), curso.Codigo)
+	if err != nil {
+		returnError(w, 500)
+	}
+
+	var response ResponseGetMatriculas
+
+	for _, mat := range matriculas {
+		response.Enrolments= append(response.Enrolments, AlunoMatriculas{
+			Codigo: int(mat.CodigoAluno),
+			Matricula: int(mat.Codigo),
+		})
+	}
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		returnError(w, 500)
+	}
+
+
 }
 
 func (h *apiHandler) handleGetDashboardInfo(w http.ResponseWriter, r *http.Request) {
@@ -318,6 +360,41 @@ func (h *apiHandler) handleUpdateCurso(w http.ResponseWriter, r *http.Request) {
 
 	returnData(w, data)
 }
+
+
+func (h *apiHandler) handleRemoveMatricula(w http.ResponseWriter, r *http.Request) {
+	alunoID := chi.URLParam(r, "aluno")
+	cursoID := chi.URLParam(r, "curso")
+
+	var alunoInt int32
+	var cursoInt int32
+
+	if _, err := fmt.Sscanf(alunoID, "%d", &alunoInt); err != nil {
+		returnError(w, http.StatusBadRequest)
+		return
+	}
+
+	if _, err := fmt.Sscanf(cursoID, "%d", &cursoInt); err != nil {
+		returnError(w, http.StatusBadRequest )
+		return
+	}
+
+	err := h.q.RemoveMatricula(r.Context(), pgstore.RemoveMatriculaParams{
+		CodigoAluno: alunoInt ,
+		CodigoCurso: cursoInt,
+	})
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			returnError(w, http.StatusNotFound)
+			return
+		}
+		returnError(w, http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 
 func (h *apiHandler) handleGetMatriculasPorAluno(w http.ResponseWriter, r *http.Request) {
 	code := chi.URLParam(r, "codigo")

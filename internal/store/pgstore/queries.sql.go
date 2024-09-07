@@ -316,6 +316,35 @@ func (q *Queries) GetDashBoardInfo(ctx context.Context) (GetDashBoardInfoRow, er
 	return i, err
 }
 
+const matriculaPorCurso = `-- name: MatriculaPorCurso :many
+SELECT 
+    codigo, codigo_aluno, codigo_curso
+FROM 
+    curso_aluno 
+WHERE
+    codigo_curso=$1
+`
+
+func (q *Queries) MatriculaPorCurso(ctx context.Context, codigoCurso int32) ([]CursoAluno, error) {
+	rows, err := q.db.Query(ctx, matriculaPorCurso, codigoCurso)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CursoAluno
+	for rows.Next() {
+		var i CursoAluno
+		if err := rows.Scan(&i.Codigo, &i.CodigoAluno, &i.CodigoCurso); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const matricularAluno = `-- name: MatricularAluno :one
 insert into curso_aluno 
     ("codigo_aluno", "codigo_curso")
@@ -351,6 +380,21 @@ func (q *Queries) MatriculasPorAluno(ctx context.Context, codigoAluno int32) (in
 	var numero_cursos int64
 	err := row.Scan(&numero_cursos)
 	return numero_cursos, err
+}
+
+const removeMatricula = `-- name: RemoveMatricula :exec
+DELETE FROM curso_aluno
+WHERE codigo_aluno = $1 AND codigo_curso = $2
+`
+
+type RemoveMatriculaParams struct {
+	CodigoAluno int32
+	CodigoCurso int32
+}
+
+func (q *Queries) RemoveMatricula(ctx context.Context, arg RemoveMatriculaParams) error {
+	_, err := q.db.Exec(ctx, removeMatricula, arg.CodigoAluno, arg.CodigoCurso)
+	return err
 }
 
 const searchAlunos = `-- name: SearchAlunos :many

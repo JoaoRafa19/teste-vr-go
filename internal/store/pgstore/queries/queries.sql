@@ -176,3 +176,17 @@ SELECT
     COALESCE((SELECT json_agg(matriculas_por_curso) FROM matriculas_por_curso), '[]'::json) AS matriculas_por_curso,
     COALESCE((SELECT json_agg(alunos_com_matricula) FROM alunos_com_matricula), '[]'::json) AS alunos_com_matricula,
     COALESCE((SELECT json_agg(alunos_sem_matricula) FROM alunos_sem_matricula), '[]'::json) AS alunos_sem_matricula;
+
+
+-- name: RemoveMatricula :exec
+DELETE FROM curso_aluno
+WHERE codigo_aluno = $1 AND codigo_curso = $2;
+
+
+-- name: MatriculaPorCurso :many
+SELECT 
+    *
+FROM 
+    curso_aluno 
+WHERE
+    codigo_curso=$1;

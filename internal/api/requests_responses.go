@@ -30,6 +30,16 @@ type ResponseMatricula struct {
 	Enrolments []CodigoMatricula `json:"matriculas"`
 }
 
+type AlunoMatriculas struct {
+	Codigo    int `json:"codigo_aluno"`
+	Matricula int `json:"matricula"`
+}
+
+type ResponseGetMatriculas struct {
+	Enrolments []AlunoMatriculas `json:"matriculas"`
+
+}
+
 type ResponseMatriculaError struct {
 	Message string `json:"message"`
 }
