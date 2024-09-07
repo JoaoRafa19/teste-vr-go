@@ -187,6 +187,19 @@ func (q *Queries) GetCurso(ctx context.Context, codigo int32) (GetCursoRow, erro
 	return i, err
 }
 
+const getCursoByCodigo = `-- name: GetCursoByCodigo :one
+select codigo, descricao, ementa from curso 
+where 
+    codigo = $1
+`
+
+func (q *Queries) GetCursoByCodigo(ctx context.Context, codigo int32) (Curso, error) {
+	row := q.db.QueryRow(ctx, getCursoByCodigo, codigo)
+	var i Curso
+	err := row.Scan(&i.Codigo, &i.Descricao, &i.Ementa)
+	return i, err
+}
+
 const getCursos = `-- name: GetCursos :many
 SELECT 
     c.codigo, c.descricao, c.ementa, 

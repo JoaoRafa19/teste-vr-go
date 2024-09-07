@@ -50,6 +50,7 @@ func NewHandler(q *pgstore.Queries) apiHandler {
 		r.Post("/", h.handleCreateAluno)
 		r.Patch("/{codigo}", h.handleUpdateStudent)
 		r.Post("/{codigo}/matricula", h.handleMatricula)
+		r.Get("/{codigo}/matricula", h.handleGetMatriculasPorAluno)
 		r.Delete("/{codigo}", h.handleDeleteAluno)
 		r.Get("/search", h.handleSearchAlunos)
 	})
@@ -309,13 +310,50 @@ func (h *apiHandler) handleUpdateCurso(w http.ResponseWriter, r *http.Request) {
 		returnError(w, 500)
 		return
 	}
-	var data = ResponseUpdateCurso{
+	var data = ResponseCursos{
 		Code:        novoCurso.Codigo,
 		Theme:       novoCurso.Ementa,
 		Description: novoCurso.Descricao,
 	}
 
 	returnData(w, data)
+}
+
+func (h *apiHandler) handleGetMatriculasPorAluno(w http.ResponseWriter, r *http.Request) {
+	code := chi.URLParam(r, "codigo")
+	if len(code) <= 0 {
+		returnError(w, http.StatusBadRequest)
+		return
+	}
+	var codigo int32
+	if _, err := fmt.Sscanf(code, "%d", &codigo); err != nil {
+		returnError(w, 500)
+		return
+	}
+
+	cursos, err := h.q.CursosMatriculados(r.Context(), codigo)
+	if err != nil {
+		returnError(w, http.StatusBadRequest)
+		return
+	}
+
+	var cursosMatriculados []ResponseCursos
+
+	for _, code := range cursos {
+		curso, err := h.q.GetCursoByCodigo(r.Context(), code)
+		if err != nil {
+			continue
+		}
+		cursosMatriculados = append(cursosMatriculados, ResponseCursos{
+			Code:        curso.Codigo,
+			Description: curso.Descricao,
+			Theme:       curso.Ementa,
+		})
+	}
+
+	if err := json.NewEncoder(w).Encode(cursosMatriculados); err != nil {
+		returnError(w, 500)
+	}
 }
 
 func (h *apiHandler) handleUpdateStudent(w http.ResponseWriter, r *http.Request) {

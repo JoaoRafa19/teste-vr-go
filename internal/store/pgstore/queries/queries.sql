@@ -43,7 +43,10 @@ insert into curso
 values 
     ($1, $2) RETURNING *;
 
-
+-- name: GetCursoByCodigo :one
+select * from curso 
+where 
+    codigo = $1;
 
 -- name: UpdateCurso :one 
 update curso 

@@ -50,7 +50,7 @@ type ResponseCreateAluno struct {
 	Code int32 `json:"codigo"`
 }
 
-type ResponseUpdateCurso struct {
+type ResponseCursos struct {
 	Code        int32  `json:"codigo"`
 	Description string `json:"descricao"`
 	Theme       string `json:"ementa"`
